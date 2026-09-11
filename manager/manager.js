@@ -154,6 +154,26 @@ setInterval(() => {
   }
 }, 30 * 1000);
 
+// per-room resource stats every 30s: CPU (from /proc), RSS, live sockets
+function sampleRoomStats() {
+  for (const room of rooms.values()) {
+    try {
+      const stat = fs.readFileSync(`/proc/${room.proc.pid}/stat`, 'utf8');
+      const parts = stat.split(' ');
+      const utime = Number(parts[13]), stime = Number(parts[14]);
+      const ticks = utime + stime;
+      const rss = Number(fs.readFileSync(`/proc/${room.proc.pid}/statm`, 'utf8').split(' ')[1]) * 4096;
+      if (room.lastTicks !== undefined) {
+        const cpu = ((ticks - room.lastTicks) / 30);
+        console.log(`[room ${room.code}] stats cpu=${cpu.toFixed(1)}% rss=${(rss / 1048576).toFixed(0)}MB conns=${room.sockets.size}`);
+        room.lastWarn = cpu > 150 ? `room ${room.code} hot: ${cpu.toFixed(0)}% cpu` : '';
+      }
+      room.lastTicks = ticks;
+    } catch {}
+  }
+}
+setInterval(sampleRoomStats, 30 * 1000);
+
 function shutdown(sig) {
   console.log(`manager shutdown (${sig}), killing ${rooms.size} room processes`);
   for (const room of rooms.values()) {

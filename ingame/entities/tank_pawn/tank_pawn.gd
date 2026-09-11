@@ -81,9 +81,13 @@ var is_invincible: bool = false
 ## called by bullet scenes that hit the player
 func die() -> void:
 	if is_invincible: return
+	print("BLTRACE pawn_die start sid=", controller.sid if (controller != null and is_instance_valid(controller)) else -999)
 	$Rest.visible = false
 	process_mode = Node.PROCESS_MODE_DISABLED
 	$DeathParticles.restart()
+	print("BLTRACE pawn_die particles restarted")
 	if controller != null and is_instance_valid(controller):
 		SessionManager.increment_death(controller.sid)
+	print("BLTRACE pawn_die death incremented")
 	IngameManager._on_tank_die()
+	print("BLTRACE pawn_die on_tank_die returned")

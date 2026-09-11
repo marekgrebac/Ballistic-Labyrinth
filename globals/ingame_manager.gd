@@ -339,7 +339,11 @@ func _on_tank_die() -> void:
 	print("BLTRACE tank_die alive_before=", alive_tanks_count)
 	alive_tanks_count -= 1
 	MasterManager.play_server_sound(ingame_node.get_node(^"Sounds/DeathNoise"))
-	if alive_tanks_count <= 1: ingame_node.get_node(^"Timers/DeathDelay").start()
+	print("BLTRACE tank_die sound done alive=", alive_tanks_count)
+	if alive_tanks_count <= 1:
+		print("BLTRACE tank_die starting DeathDelay")
+		ingame_node.get_node(^"Timers/DeathDelay").start()
+		print("BLTRACE tank_die DeathDelay started")
 
 func _on_shoot_bullet(weapon_type: String, tank: RigidBody2D) -> void:
 	if tank == null: return
@@ -373,6 +377,7 @@ func _on_shoot_bullet(weapon_type: String, tank: RigidBody2D) -> void:
 
 const NEW_BULLET_FILE := "res://ingame/entities/projectiles/bullet.tscn"
 func spawn_bullet(payload: Dictionary) -> Node:
+	print("BLTRACE spawn_bullet type=", payload.get("type"))
 	var bullet: RigidBody2D = load(NEW_BULLET_FILE).instantiate()
 	bullet.position = payload["position"]
 	bullet.initial_velocity_speed = payload["initial_velocity_speed"]

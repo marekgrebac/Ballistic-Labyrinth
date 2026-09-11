@@ -121,6 +121,7 @@ func disable_process_mode() -> void:
 	process_mode = Node.PROCESS_MODE_DISABLED
 
 func die(cause: String) -> void:
+	print("BLTRACE bullet_die cause=", cause, " type=", type)
 	$Rest.visible = false
 	call_deferred("disable_process_mode")
 	if type == "regular" and is_instance_valid(owner_node): owner_node.fired_bullet_count -= 1
