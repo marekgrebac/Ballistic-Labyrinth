@@ -227,6 +227,9 @@ const RESTART_DELAY: float = 0.25
 func restart_ingame() -> void:
 	print("BLTRACE restart_ingame")
 	end_ingame(false) #delete_ingame(false)
+	## let queued frees and replication despawns land before the new round spawns
+	await get_tree().process_frame
+	await get_tree().process_frame
 	await get_tree().create_timer(RESTART_DELAY).timeout
 	set_current_state(State.STOPPED)
 	start_game()
@@ -241,7 +244,10 @@ func delete_ingame(is_deleting_controllers: bool) -> void:
 	for spawner: Node in ingame_container.get_child(0).get_children():
 		if not spawner is MultiplayerSpawner: continue
 		for instance: Node in spawner.get_children():
-			instance.free()
+			## deferred free: mid-frame free() of replicated nodes raced
+			## replication despawns and segfaulted room servers during
+			## death-cascade round restarts
+			instance.queue_free()
 	if is_deleting_controllers: delete_controllers()
 	ingame_container.get_child(0).queue_free()
 
