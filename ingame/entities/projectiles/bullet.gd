@@ -123,8 +123,12 @@ func disable_process_mode() -> void:
 func die(cause: String) -> void:
 	print("BLTRACE bullet_die cause=", cause, " type=", type)
 	$Rest.visible = false
-	call_deferred("disable_process_mode")
 	if type == "regular" and is_instance_valid(owner_node): owner_node.fired_bullet_count -= 1
+	## engine work (particles, audio rpc, queue_free) must leave the physics callback
+	call_deferred("_die_deferred", cause)
+
+func _die_deferred(cause: String) -> void:
+	disable_process_mode()
 	if cause == "lifespan":
 		if multiplayer.is_server(): queue_free()
 		return

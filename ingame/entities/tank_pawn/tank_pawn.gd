@@ -84,6 +84,10 @@ func die() -> void:
 	print("BLTRACE pawn_die start sid=", controller.sid if (controller != null and is_instance_valid(controller)) else -999)
 	$Rest.visible = false
 	process_mode = Node.PROCESS_MODE_DISABLED
+	## engine work (particles, death bookkeeping) must leave the physics callback
+	call_deferred("_die_deferred")
+
+func _die_deferred() -> void:
 	$DeathParticles.restart()
 	print("BLTRACE pawn_die particles restarted")
 	if controller != null and is_instance_valid(controller):

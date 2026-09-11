@@ -33,16 +33,17 @@ func toggle_soundtrack(is_enabled: bool) -> void:
 	if not is_enabled: UIManager.lobby_node.get_node(^"Soundtrack").stop()
 
 func play_server_sound(player: Node, pid: int = 0) -> void:
+	## NodePath args couple RPC encoding with the scene cache; send plain strings
 	if not multiplayer.is_server():
-		receive_server_sound(player.get_path())
+		receive_server_sound(String(player.get_path()))
 		return
 	if pid < 0: return
-	if pid == 0: receive_server_sound.rpc(player.get_path())
-	else: receive_server_sound.rpc_id(pid, player.get_path())
+	if pid == 0: receive_server_sound.rpc(String(player.get_path()))
+	else: receive_server_sound.rpc_id(pid, String(player.get_path()))
 
 @rpc("authority", "unreliable", "call_local")
-func receive_server_sound(player_path: NodePath) -> void:
-	var player = get_node_or_null(player_path)
+func receive_server_sound(player_path: String) -> void:
+	var player = get_node_or_null(NodePath(player_path))
 	if not player:
 		push_error("CUSTOM ERROR: can't play server sound: null audio player path")
 		return
