@@ -223,7 +223,7 @@ func spawn_ingame(data: Variant) -> Node:
 	current_maze_dimensions = data["dimensions"]
 	return ingame
 
-const RESTART_DELAY: float = 0.25
+const RESTART_DELAY: float = 0.6
 func restart_ingame() -> void:
 	print("BLTRACE restart_ingame")
 	end_ingame(false) #delete_ingame(false)
@@ -310,6 +310,11 @@ func place_pawns() -> void:
 	if not NetworkManager.is_online: return
 	if not multiplayer.is_server(): return
 	alive_tanks_count = 0
+	## stagger pawn instantiation across frames: dense spawn bursts right
+	## after mass queue_frees crash the engine during round restarts
+	await place_pawns_staggered()
+
+func place_pawns_staggered() -> void:
 	var tank_pawn: RigidBody2D = null
 	for sid: int in SessionManager.data.keys():
 		if sid == 0: continue
@@ -339,6 +344,9 @@ func place_pawns() -> void:
 		ingame_node.get_node("TankPawns").add_child(tank_pawn, true)
 		alive_tanks_count += 1
 		print("BLTRACE place_pawns done alive=", alive_tanks_count, " sid=", sid)
+		## give replication/navigation a frame to settle between pawns
+		await get_tree().process_frame
+		await get_tree().process_frame
 
 ## directly called by destroyed tanks
 func _on_tank_die() -> void:
