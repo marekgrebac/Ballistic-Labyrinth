@@ -35,25 +35,25 @@ func _process(_delta: float) -> void:
 	if Input.is_action_just_pressed(&"Shoot"): request_shoot()
 	if Input.is_action_just_pressed(&"Teleport"):
 		if IngameManager.ingame_container.get_child_count() == 0: return
-		if not SessionManager.is_admin(multiplayer.get_unique_id()): return
+		if not SessionManager.is_op(multiplayer.get_unique_id()): return
 		var mouse_position: Vector2 = IngameManager.ingame_container.get_child(0).get_global_mouse_position()
 		IngameManager.teleport_tank.rpc_id(1, mouse_position)
 	if Input.is_action_just_pressed(&"Invincibility"):
-		if not SessionManager.is_admin(multiplayer.get_unique_id()): return
+		if not SessionManager.is_op(multiplayer.get_unique_id()): return
 		IngameManager.change_invincibility.rpc_id(1)
 	if Input.is_action_just_pressed(&"NoClip"):
-		if not SessionManager.is_admin(multiplayer.get_unique_id()): return
+		if not SessionManager.is_op(multiplayer.get_unique_id()): return
 		IngameManager.change_noclip.rpc_id(1)
 
 func request_shoot() -> void:
 	if not NetworkManager.is_online: return
 	if multiplayer.is_server():
-		if pawn == null: return
+		if pawn == null or not is_instance_valid(pawn): return
 		pawn.shoot()
 		return
 	rpc_shoot.rpc_id(1)
 
 @rpc("any_peer", "reliable")
 func rpc_shoot() -> void:
-	if pawn == null: return
+	if pawn == null or not is_instance_valid(pawn): return
 	pawn.shoot()

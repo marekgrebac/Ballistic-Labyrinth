@@ -84,4 +84,6 @@ func die() -> void:
 	$Rest.visible = false
 	process_mode = Node.PROCESS_MODE_DISABLED
 	$DeathParticles.restart()
+	if controller != null and is_instance_valid(controller):
+		SessionManager.increment_death(controller.sid)
 	IngameManager._on_tank_die()

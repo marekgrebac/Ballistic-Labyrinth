@@ -107,15 +107,26 @@ func idle_if_no_tanks() -> bool:
 	return false
 
 var is_aiming: bool = false
+
+## run expensive scans only every AI_TICKS-th physics frame, staggered per bot
+const AI_TICKS: int = 4
+var ai_tick: int = 0
+
+func ai_tick_skipped() -> bool:
+	ai_tick = (ai_tick + 1) % AI_TICKS
+	return ai_tick != abs(sid * 9973) % AI_TICKS
+
 func _physics_process(delta: float) -> void:
 	if not multiplayer.is_server(): return
-	if pawn == null: return
+	if pawn == null or not is_instance_valid(pawn): return
 	if pawn.get_node(^"Rest").visible == false: return
+	if IngameManager.ingame_container.get_child_count() == 0: return
 	global_position = pawn.global_position
 	rotation = pawn.rotation
-	determine_target()
-	check_nearby_bullets()
-	configure_patrol()
+	if not ai_tick_skipped():
+		determine_target()
+		check_nearby_bullets()
+		configure_patrol()
 	if idle_if_no_tanks(): return
 	determine_if_wall_to_target()
 	point_to_target_if_seen()

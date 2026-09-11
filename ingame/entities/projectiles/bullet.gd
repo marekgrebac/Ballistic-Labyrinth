@@ -40,14 +40,15 @@ func _ready() -> void:
 	if type != "trap": $LifespanTimer.start()
 
 func determine_closest_target() -> void:
-	var result: Node2D = owner_node
+	var result: Node2D = owner_node if is_instance_valid(owner_node) else null
 	for tank: RigidBody2D in IngameManager.ingame_container.get_child(0).get_node("TankPawns").get_children():
 		if tank.get_node("Rest").visible == false: continue
-		if result.get_node("Rest").visible == false:
+		if result == null or result.get_node("Rest").visible == false:
 			result = tank
 			continue
 		if position.distance_to(tank.position) <= position.distance_to(result.position):
 			result = tank
+	if result == null: return
 	$RocketNavigation.target_position = result.position
 	target = result
 
@@ -107,7 +108,7 @@ func _on_body_entered(body: Node) -> void:
 		elif type == "trap": MasterManager.play_server_sound($BounceTrap)
 		else: MasterManager.play_server_sound($BounceRegular)
 	if body.get_meta("entity_type", "NULL") == "tank":
-		if body.controller != null and owner_node.controller != null:
+		if body.controller != null and is_instance_valid(owner_node) and owner_node.controller != null:
 			if body.controller.sid != owner_node.controller.sid and not body.is_invincible:
 				SessionManager.increment_kill(owner_node.controller.sid)
 		body.die()
@@ -122,7 +123,7 @@ func disable_process_mode() -> void:
 func die(cause: String) -> void:
 	$Rest.visible = false
 	call_deferred("disable_process_mode")
-	if type == "regular": owner_node.fired_bullet_count -= 1
+	if type == "regular" and is_instance_valid(owner_node): owner_node.fired_bullet_count -= 1
 	if cause == "lifespan":
 		if multiplayer.is_server(): queue_free()
 		return

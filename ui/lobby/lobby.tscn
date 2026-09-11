@@ -252,9 +252,17 @@ size_flags_stretch_ratio = 0.25
 alignment = 1
 metadata/_edit_lock_ = true
 
-[node name="JoinButton" type="Button" parent="Frame/Side1/JoinContainer" unique_id=1779516058]
+[node name="StartGameButton" type="Button" parent="Frame/Side1/JoinContainer" unique_id=1779516059]
+unique_name_in_owner = true
+visible = false
 layout_mode = 2
-text = "Join Game"
+text = "Start Game"
+metadata/_edit_lock_ = true
+
+[node name="JoinButton" type="Button" parent="Frame/Side1/JoinContainer" unique_id=1779516058]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Join Room"
 metadata/_edit_lock_ = true
 
 [node name="Spacer" type="Control" parent="Frame/Side1/JoinContainer" unique_id=222539405]
@@ -262,16 +270,18 @@ custom_minimum_size = Vector2(0, 25)
 layout_mode = 2
 metadata/_edit_lock_ = true
 
-[node name="IPAddressInput" type="LineEdit" parent="Frame/Side1/JoinContainer" unique_id=1731707331]
+[node name="RoomIdInput" type="LineEdit" parent="Frame/Side1/JoinContainer" unique_id=1731707331]
+unique_name_in_owner = true
 layout_mode = 2
-placeholder_text = "IP address"
+max_length = 12
+placeholder_text = "ROOM ID"
 alignment = 1
 metadata/_edit_lock_ = true
 
-[node name="PortInput" type="LineEdit" parent="Frame/Side1/JoinContainer" unique_id=421932785]
+[node name="CreateRoomButton" type="Button" parent="Frame/Side1/JoinContainer" unique_id=421932785]
+unique_name_in_owner = true
 layout_mode = 2
-placeholder_text = "port"
-alignment = 1
+text = "Create Room"
 metadata/_edit_lock_ = true
 
 [node name="Spacer2" type="Control" parent="Frame/Side1" unique_id=860729740]
@@ -370,7 +380,15 @@ metadata/_edit_lock_ = true
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 4
-text = "Leave Game"
+text = "Leave Room"
+metadata/_edit_lock_ = true
+
+[node name="CloseRoomButton" type="Button" parent="Frame/Side1" unique_id=687722754]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+text = "Close Room"
 metadata/_edit_lock_ = true
 
 [node name="Spacer5" type="Control" parent="Frame/Side1" unique_id=1409945194]
@@ -409,12 +427,85 @@ size_flags_vertical = 3
 columns = 4
 metadata/_edit_lock_ = true
 
+[node name="HelpPanel" type="HBoxContainer" parent="." unique_id=900000010]
+unique_name_in_owner = true
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.98
+anchor_bottom = 0.97
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+metadata/_edit_lock_ = true
+
+[node name="ShortcutsCol" type="VBoxContainer" parent="HelpPanel" unique_id=900000015]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+metadata/_edit_lock_ = true
+
+[node name="ShortcutsTitle" type="Label" parent="HelpPanel/ShortcutsCol" unique_id=900000011]
+layout_mode = 2
+text = "Controls"
+theme_override_font_sizes/font_size = 30
+metadata/_edit_lock_ = true
+
+[node name="ShortcutsText" type="RichTextLabel" parent="HelpPanel/ShortcutsCol" unique_id=900000012]
+custom_minimum_size = Vector2(0, 200)
+layout_mode = 2
+size_flags_vertical = 0
+bbcode_enabled = true
+text = "[b]WASD / arrows[/b] drive, [b]Shift[/b] drift, [b]Space / Q[/b] shoot
+[b]Enter[/b] chat, [b]Enter[/b] send + back to game, [b]Esc[/b] unfocus
+[b]Shift+M[/b] move chat, [b]Shift+R[/b] resize chat, [b]Shift+H[/b] hide chat
+[b]L[/b] lobby, [b]P[/b] pause (admin)
+[b]Shift+T[/b] teleport, [b]Shift+I[/b] invincibility, [b]Shift+N[/b] noclip (admin)"
+fit_content = true
+scroll_active = false
+theme_override_font_sizes/normal_font_size = 22
+metadata/_edit_lock_ = true
+
+[node name="CommandsCol" type="VBoxContainer" parent="HelpPanel" unique_id=900000016]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+metadata/_edit_lock_ = true
+
+[node name="CommandsTitle" type="Label" parent="HelpPanel/CommandsCol" unique_id=900000013]
+layout_mode = 2
+text = "Room host commands"
+theme_override_font_sizes/font_size = 30
+metadata/_edit_lock_ = true
+
+[node name="CommandsText" type="RichTextLabel" parent="HelpPanel/CommandsCol" unique_id=900000014]
+custom_minimum_size = Vector2(0, 190)
+layout_mode = 2
+size_flags_vertical = 0
+bbcode_enabled = true
+text = "[b]/start[/b] round, [b]/restart[/b], [b]/end_game[/b] lobby
+[b]/bot add 2[/b] add, [b]/bot del 1[/b] remove
+[b]/maze \"10 25 8 25\"[/b] size (next round)
+[b]/crate add bulk 10[/b], [b]/crate remove 3[/b]
+[b]/assign sid attr val[/b], [b]/get_sessions[/b]
+[b]/mute sid true[/b], [b]/pause[/b], [b]/purge[/b] clear chat
+[b]/makehost name[/b] transfer host
+[b]/help[/b] all commands"
+fit_content = true
+scroll_active = false
+theme_override_font_sizes/normal_font_size = 22
+metadata/_edit_lock_ = true
+
 [connection signal="pressed" from="ExitConfirmDialog/Frame/ButtonContainer/DiscardButton" to="." method="_on_discard_button_pressed"]
 [connection signal="pressed" from="ExitConfirmDialog/Frame/ButtonContainer/ConfirmButton" to="." method="_on_confirm_button_pressed"]
+[connection signal="pressed" from="Frame/Side1/JoinContainer/StartGameButton" to="." method="_on_start_game_button_pressed"]
 [connection signal="pressed" from="Frame/Side1/JoinContainer/JoinButton" to="." method="_on_join_button_pressed"]
-[connection signal="text_changed" from="Frame/Side1/JoinContainer/IPAddressInput" to="." method="_on_ip_address_input_text_changed"]
-[connection signal="text_changed" from="Frame/Side1/JoinContainer/PortInput" to="." method="_on_port_input_text_changed"]
+[connection signal="text_changed" from="Frame/Side1/JoinContainer/RoomIdInput" to="." method="_on_room_id_input_text_changed"]
+[connection signal="text_submitted" from="Frame/Side1/JoinContainer/RoomIdInput" to="." method="_on_room_id_input_text_submitted"]
+[connection signal="pressed" from="Frame/Side1/JoinContainer/CreateRoomButton" to="." method="_on_create_room_button_pressed"]
+[connection signal="text_changed" from="Frame/Side1/NameContainer/UsernameEdit" to="." method="_on_username_edit_text_changed"]
 [connection signal="text_submitted" from="Frame/Side1/NameContainer/UsernameEdit" to="." method="_on_username_edit_text_submitted"]
 [connection signal="toggled" from="Frame/Side1/NameContainer/ToggleSoundtrack" to="." method="_on_toggle_soundtrack_toggled"]
 [connection signal="color_changed" from="Frame/Side1/PlayerColor/PlayerColorContainer/PlayerColorPicker" to="." method="_on_player_color_picker_color_changed"]
 [connection signal="pressed" from="Frame/Side1/LeaveGameButton" to="." method="_on_exit_game_button_pressed"]
+[connection signal="pressed" from="Frame/Side1/CloseRoomButton" to="." method="_on_close_room_button_pressed"]

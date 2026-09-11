@@ -87,3 +87,10 @@ func process_message(text: String, channel: String, target_pid: int) -> void:
 
 const PID_EXCLUSIVE_CHANNELS: PackedStringArray = ["shell_output", "shell_error", "target"]
 const GROUP_CHANNELS: PackedStringArray = ["admin", "global"]
+
+## clears chat history and the visible chat window on every client
+@rpc("authority", "reliable", "call_local")
+func purge_chat() -> void:
+	if multiplayer.is_server(): return
+	chat_history.clear()
+	remove_previous_message.emit()

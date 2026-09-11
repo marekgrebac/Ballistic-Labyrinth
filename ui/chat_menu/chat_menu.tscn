@@ -41,9 +41,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -700.0
-offset_top = 225.0
+offset_top = 200.0
 offset_right = -200.0
-offset_bottom = 825.0
+offset_bottom = 740.0
 grow_horizontal = 2
 grow_vertical = 2
 offset_transform_enabled = true
@@ -88,6 +88,7 @@ metadata/_edit_lock_ = true
 
 [node name="ChatText" type="RichTextLabel" parent="Texture/Container" unique_id=908706404]
 unique_name_in_owner = true
+bbcode_enabled = true
 layout_mode = 2
 size_flags_vertical = 3
 focus_mode = 2

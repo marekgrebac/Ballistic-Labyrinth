@@ -56,11 +56,11 @@ func set_pause(is_paused: bool) -> void:
 		get_tree().paused = is_paused
 		if not UIManager.is_ui_configured: return
 		UIManager.lobby_node.unfocus()
-		var is_admin: bool = SessionManager.is_admin(multiplayer.get_unique_id())
+		var is_admin: bool = SessionManager.is_op(multiplayer.get_unique_id())
 		UIManager.pause_menu_node.toggle_admin_options(is_admin)
 		UIManager.pause_menu_node.visible = is_paused
 		return
-	if not NetworkManager.is_dedicated_server and not SessionManager.is_admin(pid): return
+	if not SessionManager.is_op(pid): return
 	if IngameManager.current_state == IngameManager.State.STOPPED: return
 	get_tree().paused = is_paused
 	if UIManager.is_ui_configured:

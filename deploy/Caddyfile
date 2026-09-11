@@ -1,0 +1,26 @@
+:80 {
+	encode zstd gzip
+
+	# Godot 4 web export (threads) requires cross-origin isolation
+	header {
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Embedder-Policy "require-corp"
+	}
+
+	# Room API + game multiplayer WebSocket -> room manager
+	@ws path /ws/*
+	handle @ws {
+		reverse_proxy manager:8899
+	}
+
+	@rooms path /api/rooms*
+	handle @rooms {
+		reverse_proxy manager:8899
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

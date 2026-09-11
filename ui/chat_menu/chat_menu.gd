@@ -47,6 +47,17 @@ func remove_previous_message() -> void:
 	update_chat(ChatManager.chat_history)
 
 const NO_TIMESTAMP_CHANNELS: PackedStringArray = ["shell_input", "shell_error", "shell_output"]
+
+func bbtext(value: Variant) -> String:
+	return str(value).replace("[", "[lb]").replace("]", "[rb]")
+
+func sender_color_html(sender_sid: Variant) -> String:
+	var sid: int = int(sender_sid)
+	if SessionManager.data.has(sid):
+		var c: Variant = SessionManager.data[sid].get("color")
+		if c is Color: return c.to_html(false)
+	return "ffffff"
+
 func add_message(message: Dictionary) -> void:
 	var readable_sid: String = SessionManager.encode_session_id(message.get("sender_sid"))
 	if not NetworkManager.is_online: readable_sid = "#OFFLINE"
@@ -54,8 +65,13 @@ func add_message(message: Dictionary) -> void:
 		%ChatText.text += str(message.get("timestamp")) + " "
 	if message.get("channel") == "peer":
 		MasterManager.play_server_sound(MasterManager.sounds.get_node(^"PlayerChat"))
-		%ChatText.text += message.get("sender_name")
-		%ChatText.text += "(" + readable_sid + "): "
+		%ChatText.text += "[color=#" + sender_color_html(message.get("sender_sid")) + "]"
+		%ChatText.text += bbtext(message.get("sender_name"))
+		%ChatText.text += "(" + readable_sid + ")[/color]: "
+		%ChatText.text += bbtext(message.get("text")) + "\n"
+		await get_tree().process_frame
+		%ChatText.scroll_to_line(%ChatText.get_line_count() - 1)
+		return
 	elif message.get("channel") == "shell_input":
 		%ChatText.text += ":: "
 	elif message.get("channel") == "shell_output":
@@ -68,12 +84,13 @@ func add_message(message: Dictionary) -> void:
 		%ChatText.text += "!!!: "
 	elif message.get("channel") == "global":
 		%ChatText.text += "***: "
-	%ChatText.text += message.get("text") + "\n"
+	%ChatText.text += bbtext(message.get("text")) + "\n"
 	await get_tree().process_frame
 	%ChatText.scroll_to_line(%ChatText.get_line_count() - 1)
 
 func _on_chat_input_text_submitted(raw: String) -> void:
 	%ChatInput.clear()
+	%ChatInput.release_focus()
 	if raw.begins_with("/"): ConsoleManager.execute_raw_string(raw)
 	else: ChatManager.send_message(raw, "peer", 0)
 

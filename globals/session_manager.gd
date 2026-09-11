@@ -31,7 +31,9 @@ func create_local_profile() -> void:
 		"muted": false,
 		"color": Color(1.0, 1.0, 1.0, 1.0),
 		"kills": 0,
-		"score": 0
+		"score": 0,
+		"deaths": 0,
+		"ping": 0
 	}
 	data[0] = profile_data
 
@@ -106,6 +108,8 @@ func add_bot(count: int = 1) -> void:
 			"color": Color(1.0, 1.0, 1.0, 1.0),
 			"kills": 0,
 			"score": 0,
+			"deaths": 0,
+			"ping": 0,
 			"personality": {}
 		})
 		count -= 1
@@ -157,6 +161,11 @@ func increment_kill(sid: int) -> void:
 func increment_score(sid: int) -> void:
 	if sid == 0: return
 	assign_from_str(sid, "score", str(data[sid].get("score") + 1))
+
+func increment_death(sid: int) -> void:
+	if sid == 0: return
+	if not data.has(sid): return
+	assign_from_str(sid, "deaths", str(data[sid].get("deaths", 0) + 1))
 
 ## alpha channel isn't used, so every color is opaque by default
 func color_to_string(color: Color) -> String:
@@ -252,7 +261,9 @@ func add_crate(count: int, type: String) -> void:
 	if type == "bulk" and count <= 0: return
 	if IngameManager.ingame_container.get_child_count() == 0: return
 	if IngameManager.current_state != IngameManager.State.FINISHED: return
-	var current_crate_count: int = IngameManager.ingame_container.get_node("Crates").get_child_count()
+	var crates_node: Node = IngameManager.ingame_container.get_child(0).get_node_or_null(^"Crates")
+	if crates_node == null: return
+	var current_crate_count: int = crates_node.get_child_count()
 	if type != "bulk": count = 1
 	if current_crate_count + count > max_crate_count: return
 	if type == "bulk":
@@ -265,7 +276,8 @@ func remove_crate(count: int) -> void:
 	if count <= 0: return
 	if IngameManager.ingame_container.get_child_count() == 0: return
 	if IngameManager.current_state != IngameManager.State.FINISHED: return
-	var crates_node: Node = IngameManager.ingame_container.get_child(0).get_node(^"Crates")
+	var crates_node: Node = IngameManager.ingame_container.get_child(0).get_node_or_null(^"Crates")
+	if crates_node == null: return
 	var current_count: int = crates_node.get_child_count()
 	if current_count < count: count = current_count
 	while count > 0:
@@ -307,18 +319,30 @@ func update_registry(server_data: Dictionary) -> void:
 func request_profile_update(profile: Dictionary) -> void:
 	if not multiplayer.is_server(): return
 	var sender_id: int = multiplayer.get_remote_sender_id()
+	if sender_id <= 1: return
 	var clean_name: String = profile.get("name", "unnamed").strip_edges()
 	if clean_name.is_empty(): clean_name = "Player " + encode_session_id(sender_id)
+	var has_power_holder: bool = false
+	for sid: int in data.keys():
+		if sid > 1 and data[sid].get("op") == true:
+			has_power_holder = true
+			break
+	var grant_power: bool = NetworkManager.is_dedicated_server and not has_power_holder
+	var previous: Dictionary = data.get(sender_id, {})
 	var new_session: Dictionary = {
 		"name": clean_name,
-		"admin": is_admin(sender_id),
-		"op": is_op(sender_id),
+		"admin": grant_power or is_admin(sender_id),
+		"op": grant_power or is_op(sender_id),
 		"muted": is_muted(sender_id),
 		"color": profile.get("color", Color(1.0, 1.0, 1.0, 1.0)),
-		"kills": 0,
-		"score": 0
+		"kills": previous.get("kills", 0),
+		"score": previous.get("score", 0),
+		"deaths": previous.get("deaths", 0),
+		"ping": previous.get("ping", 0)
 	}
 	data[sender_id] = new_session
+	if grant_power:
+		ConsoleManager.print_output("You are the room admin. Use Start Game; chat console: /start /bot /maze /restart /end_game /makehost /help", "target", sender_id)
 	UIManager.update_lobby_register()
 	update_registry.rpc(data)
 

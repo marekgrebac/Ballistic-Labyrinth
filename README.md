@@ -1,18 +1,92 @@
-# Ballistic-Labyrinth
-A simple 2D multiplayer tank maze game in Godot inspired by Tank Trouble.
+# Ballistic Labyrinth — Self-Hosted Web Edition
 
-It's my first meaningful project because I've implemented multiplayer for a game for the first time. A long time ago, I tried implementing multiplayer on the legacy_exp branch, but it's unfinished and unplayable. You can still check it out if you want to.
-This project was made a few months before organising into a Git repository, the previous versions being the commits from the legacy and legacy_exp branches. Updates starting with v0 used to be individual archives now incorporated into this repository. The singleplayer-only version of this game is implemented in v1.4.0-lite and release version for the multiplayer variant is v1.18.
+A 2D multiplayer tank maze game (Tank-Trouble-style) that runs **entirely in the browser**, with rooms hosted on **your own server**.
 
-Link to itch.io lite version export: https://wizzoplit273.itch.io/ballistic-labyrinth-lite
+This is a heavily modified, self-hosted fork of
+[Wizzoplit273/Ballistic-Labyrinth](https://github.com/Wizzoplit273/Ballistic-Labyrinth)
+(Godot, MIT). The original ENet/UDP multiplayer was replaced with WebSockets so the
+game can be played from any browser, and the whole stack — web client, room API and
+game traffic — is served behind **a single port**, designed to sit behind a
+Cloudflare Tunnel.
 
-Link to itch.io release version export: https://wizzoplit273.itch.io/ballistic-labyrinth
+![Godot 4.7.1](https://img.shields.io/badge/Godot-4.7.1-478CBF)
+![Docker Compose](https://img.shields.io/badge/deploy-Docker%20Compose-2496ED)
+![License MIT](https://img.shields.io/badge/license-MIT-green)
+![Self hosted](https://img.shields.io/badge/hosting-self--hosted-orange)
 
-Screenshots:
-<img width="1919" height="1141" alt="Screenshot_20260901_101619" src="https://github.com/user-attachments/assets/9eab8b5d-64b7-45c4-a7f1-4196bde644d2" />
-<img width="1919" height="1143" alt="Screenshot_20260901_101802" src="https://github.com/user-attachments/assets/9686f1c1-1ac7-43d9-99a9-fcbd3216d617" />
-<img width="1919" height="1140" alt="Screenshot_20260901_101829" src="https://github.com/user-attachments/assets/0db519a8-6933-430d-8a24-c4bdd574e306" />
-<img width="1919" height="1143" alt="Screenshot_20260901_102203" src="https://github.com/user-attachments/assets/18215864-15d3-400a-b84c-d4b9b7a6378a" />
-<img width="1919" height="1146" alt="Screenshot_20260901_101855" src="https://github.com/user-attachments/assets/82112b0e-0d63-4716-b79e-fd924b3459f2" />
-<img width="233" height="227" alt="Screenshot_20260901_101928" src="https://github.com/user-attachments/assets/2ecaebc3-2f7e-4481-b8e9-68977b1323a8" />
-<img width="182" height="159" alt="Screenshot_20260901_102112" src="https://github.com/user-attachments/assets/940486ba-100f-43db-a31f-76c3df5c87da" />
+## Screenshots
+
+> **TODO:** add screenshots of the home screen, lobby and in-game action.
+> The upstream project page has representative screenshots:
+> https://github.com/Wizzoplit273/Ballistic-Labyrinth
+
+## For players
+
+1. Open the game URL, e.g. `https://game.example.com/`.
+2. Pick a **username** and a **color** — both save automatically as you type.
+3. Press **Create Room** and share the link (`https://game.example.com/?room=ABC123`)
+   or just the 6-character room code with your friends. Or paste a code into the
+   **ROOM ID** field and press **Join Room**.
+4. The first person in a room becomes its **host**: they get the *Start Game* and
+   *Close Room* buttons plus host chat commands (`/bot add 3`, `/maze`, `/restart`, …).
+   If the host leaves, hosting passes to the longest-present remaining player.
+
+### Controls
+
+| Action | Keys |
+| --- | --- |
+| Drive | `WASD` or arrow keys |
+| Drift | hold `Shift` |
+| Shoot | `Space` or `Q` |
+| Chat | `Enter` (or `Y` / `C`) to open, `Enter` to send, `Esc` to unfocus |
+| Leaderboard | hold `Tab` (kills, deaths, K/D, score, ping) |
+| Lobby overlay | `L` |
+| Chat window | `Shift+M` move, `Shift+R` resize, `Shift+H` hide |
+
+Host-only fun: `P`/`Esc` pause menu, `Shift+T` teleport, `Shift+I` invincibility,
+`Shift+N` noclip.
+
+## For hosts (run your own)
+
+```bash
+cd /root/Ballistic-Labyrinth
+docker compose up -d --build
+```
+
+Then point a Cloudflare Tunnel public hostname at `http://localhost:8137` — that is
+the only port the stack publishes. Full instructions, tunnel config and
+troubleshooting: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+
+## Features
+
+- **Browser-native multiplayer** — Godot 4.7.1 web export (wasm + threads) talking
+  WebSockets; no plugins, no UDP, no port forwarding for players.
+- **Rooms on demand** — every room is its own headless Godot dedicated-server
+  process, spawned by a small Node.js room manager; 6-character share codes and
+  `?room=CODE` auto-join links.
+- **Real gameplay** — procedurally generated mazes, ricocheting bullets, bots,
+  weapon crates (laser, rocket, trap), rounds with a top-left `ROUND n` indicator,
+  spectate window when joining mid-round.
+- **Lobby & chat** — colored player list, in-game chat with BBCode colors,
+  command console (`/help`), translucent `Tab` leaderboard with live ping.
+- **Host administration** — host migration when the host leaves, `/makehost`,
+  bots, maze size, crates, mute, pause, chat purge, room close.
+
+## Documentation
+
+| Doc | Contents |
+| --- | --- |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Install, Cloudflare Tunnel setup, rebuilds, tuning, troubleshooting |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the pieces fit: Caddy, room manager, Godot servers, protocols |
+| [docs/COMMANDS.md](docs/COMMANDS.md) | Full chat/console command reference and keybindings |
+| [docs/CHANGELOG-SELFHOST.md](docs/CHANGELOG-SELFHOST.md) | Everything this fork changed relative to upstream |
+
+## Credits & license
+
+- Original game: **[Wizzoplit273](https://github.com/Wizzoplit273)** —
+  [Ballistic-Labyrinth](https://github.com/Wizzoplit273/Ballistic-Labyrinth)
+  (also on itch.io: [full](https://wizzoplit273.itch.io/ballistic-labyrinth),
+  [lite](https://wizzoplit273.itch.io/ballistic-labyrinth-lite)).
+- Self-hosting fork: WebSocket networking, room manager, Docker packaging, web UI
+  and stability fixes by the repo owner.
+- License: [MIT](LICENSE) (same as upstream — the `LICENSE` file is retained).

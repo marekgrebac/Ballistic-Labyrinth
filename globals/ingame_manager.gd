@@ -81,6 +81,7 @@ func set_maze_animation_to_true() -> void:
 	current_is_animated_generation = true
 
 func create_controller(sid: int) -> void:
+	print("BLTRACE create_controller sid=", sid)
 	if sid == 0: return
 	if not NetworkManager.is_online: return
 	if not multiplayer.is_server(): return
@@ -98,6 +99,7 @@ func _custom_spawn(sid: Variant) -> Node:
 	return controller
 
 func create_controllers() -> void:
+	print("BLTRACE create_controllers data=", SessionManager.data.keys())
 	if not NetworkManager.is_online: return
 	if not multiplayer.is_server(): return
 	var already_has_controller: bool
@@ -125,8 +127,13 @@ func delete_controllers() -> void:
 		controller.queue_free()
 
 func delete_player(pid: int) -> void:
+	print("BLTRACE delete_player pid=", pid, " state=", current_state)
 	if pid <= 1: return
-	if current_state != State.FINISHED: return
+	if current_state != State.FINISHED:
+		for orphan: Node in controller_container.get_children():
+			if orphan.sid == pid and orphan.pawn == null:
+				orphan.queue_free()
+		return
 	var target_controller: MultiplayerSynchronizer = null
 	for cont: Node in controller_container.get_children():
 		if cont.sid <= 1: continue
@@ -142,13 +149,21 @@ func delete_player(pid: int) -> void:
 		bullet.queue_free()
 	target_controller.pawn.queue_free()
 	target_controller.queue_free()
+	## a disconnected player's pawn no longer blocks the round end
+	alive_tanks_count = max(0, alive_tanks_count - 1)
+	if alive_tanks_count <= 1 and ingame_node != null:
+		ingame_node.get_node(^"Timers/DeathDelay").start()
+
+## counts played rounds, broadcast alongside maze properties for the HUD label
+var round_number: int = 0
 
 @rpc("any_peer", "reliable", "call_local")
 func start_game() -> void:
 	var pid: int = multiplayer.get_remote_sender_id()
+	print("BLTRACE start_game pid=", pid)
 	if not NetworkManager.is_online: return
 	if not multiplayer.is_server(): return
-	if pid != 0 and not SessionManager.is_admin(pid): return
+	if pid != 0 and not SessionManager.is_op(pid): return
 	MasterManager.is_await_interrupted = true
 	current_seed = randi()
 	current_maze_dimensions.x = randi_range(set_maze_dimensions[0], set_maze_dimensions[1])
@@ -157,6 +172,7 @@ func start_game() -> void:
 		var auxiliary: int = current_maze_dimensions.x
 		current_maze_dimensions.x = current_maze_dimensions.y
 		current_maze_dimensions.y = auxiliary
+	round_number += 1
 	start_ingame(current_seed, current_maze_dimensions)
 
 @rpc("any_peer", "reliable")
@@ -164,7 +180,7 @@ func end_game() -> void:
 	var pid: int = multiplayer.get_remote_sender_id()
 	if not NetworkManager.is_online: return
 	if not multiplayer.is_server(): return
-	if not SessionManager.is_admin(pid): return
+	if not SessionManager.is_op(pid): return
 	end_ingame(true)
 
 const LATE_INGAME_SYNC_DELAY: float = 2.0
@@ -174,18 +190,22 @@ func late_sync_ingame(maze_seed: int, maze_dimensions: Vector2i) -> void:
 	start_ingame(maze_seed, maze_dimensions)
 
 func start_ingame(maze_seed: int, maze_dimensions: Vector2i) -> void:
+	print("BLTRACE start_ingame seed=", maze_seed, " dims=", maze_dimensions)
 	if not multiplayer.is_server(): return
-	set_maze_properties.rpc(maze_seed, maze_dimensions)
+	set_maze_properties.rpc(maze_seed, maze_dimensions, round_number)
 	create_controllers()
 	create_ingame()
 
 @rpc("authority", "reliable", "call_local")
-func set_maze_properties(maze_seed: int, maze_dimensions: Vector2i) -> void:
+func set_maze_properties(maze_seed: int, maze_dimensions: Vector2i, p_round_number: int) -> void:
 	if UIManager.is_ui_configured: UIManager.lobby_node.activate(false)
 	current_seed = maze_seed
 	current_maze_dimensions = maze_dimensions
+	round_number = p_round_number
+	if UIManager.is_ui_configured: UIManager.set_round_label(round_number)
 
 func create_ingame() -> void:
+	print("BLTRACE create_ingame")
 	if ingame_container.get_child_count() > 0: return
 	var data: Dictionary = {
 		"seed": current_seed,
@@ -195,6 +215,7 @@ func create_ingame() -> void:
 
 var ingame_node: Node = null
 func spawn_ingame(data: Variant) -> Node:
+	print("BLTRACE spawn_ingame")
 	if UIManager.is_ui_configured: UIManager.lobby_node.activate(false)
 	var ingame: Node = load(INGAME_FILE).instantiate()
 	ingame_node = ingame
@@ -204,6 +225,7 @@ func spawn_ingame(data: Variant) -> Node:
 
 const RESTART_DELAY: float = 0.25
 func restart_ingame() -> void:
+	print("BLTRACE restart_ingame")
 	end_ingame(false) #delete_ingame(false)
 	await get_tree().create_timer(RESTART_DELAY).timeout
 	set_current_state(State.STOPPED)
@@ -213,6 +235,7 @@ func _on_ingame_next_round() -> void:
 	restart_ingame()
 
 func delete_ingame(is_deleting_controllers: bool) -> void:
+	print("BLTRACE delete_ingame controllers=", is_deleting_controllers)
 	if not multiplayer.is_server(): return
 	if ingame_container.get_child_count() == 0: return
 	for spawner: Node in ingame_container.get_child(0).get_children():
@@ -224,8 +247,10 @@ func delete_ingame(is_deleting_controllers: bool) -> void:
 
 @rpc("authority", "reliable")
 func end_ingame(is_deleting_controllers: bool) -> void:
+	print("BLTRACE end_ingame controllers=", is_deleting_controllers)
 	MasterManager.set_pause(false)
 	set_current_state(State.STOPPED)
+	if UIManager.is_ui_configured: UIManager.set_round_label(0)
 	delete_ingame(is_deleting_controllers)
 	if is_deleting_controllers and UIManager.is_ui_configured:
 		UIManager.lobby_node.activate(true)
@@ -238,11 +263,12 @@ func request_end_ingame() -> void:
 	var pid: int = multiplayer.get_remote_sender_id()
 	if not multiplayer.is_server(): return
 	if pid == 0: return
-	if not SessionManager.is_admin(pid): return
+	if not SessionManager.is_op(pid): return
 	MasterManager.set_pause(false)
 	end_ingame(true)
 
 func finish_network_maze_generation() -> void:
+	print("BLTRACE finish_network_maze_generation alive=", alive_tanks_count)
 	if not NetworkManager.is_online: return
 	if not multiplayer.is_server(): return
 	#for pid: int in multiplayer.get_peers():
@@ -262,6 +288,7 @@ func finish_network_maze_generation() -> void:
 
 const FINISH_GENERATION_DELAY: float = 1.0
 func broadcast_generation_finish() -> void:
+	print("BLTRACE broadcast_generation_finish")
 	if not multiplayer.is_server(): return
 	set_current_state(State.WAITING_BEFORE_SYNC)
 	await get_tree().create_timer(FINISH_GENERATION_DELAY).timeout
@@ -273,35 +300,43 @@ func broadcast_generation_finish() -> void:
 const PAWN_LINEAR_STUCK_FACTOR: float = 200 / 3.2
 const NEW_TANK_PAWN_PATH: String = "res://ingame/entities/tank_pawn/tank_pawn.tscn"
 func place_pawns() -> void:
+	print("BLTRACE place_pawns start sids=", SessionManager.data.keys())
 	if not NetworkManager.is_online: return
 	if not multiplayer.is_server(): return
 	alive_tanks_count = 0
 	var tank_pawn: RigidBody2D = null
 	for sid: int in SessionManager.data.keys():
 		if sid == 0: continue
+		print("BLTRACE pp1 instantiate sid=", sid)
 		tank_pawn = load(NEW_TANK_PAWN_PATH).instantiate()
 		var target_controller: Node = null
 		for controller: Node in controller_container.get_children():
 			if controller.sid != sid: continue
 			target_controller = controller
 			break
-		if target_controller == null: continue # normally shouldn't happen
+		if target_controller == null: continue
+		print("BLTRACE pp2 ctrl found sid=", sid)
 		target_controller.pawn = tank_pawn
 		if target_controller.get_meta("type", "null") == "bot":
 			target_controller.MAX_STUCK_POSITION_CHANGE = tank_pawn.linear_speed / PAWN_LINEAR_STUCK_FACTOR
+		print("BLTRACE pp3 meta done")
 		tank_pawn.controller = target_controller
 		tank_pawn.get_node(^"Rest/Image").modulate = SessionManager.data[sid]["color"]
 		tank_pawn.get_node(^"DeathParticles").modulate = SessionManager.data[sid]["color"]
 		tank_pawn.label_node.text = SessionManager.data[sid]["name"]
+		print("BLTRACE pp4 visuals done")
 		var selected_cell: Vector2i = ingame_node.maze_cells.get(ingame_node.SEEDED_RNG.randi_range(0, ingame_node.maze_cells.size() - 1))
 		tank_pawn.global_position = ingame_node.maze_cell_to_world(selected_cell)
 		tank_pawn.rotation = ingame_node.SEEDED_RNG.randf_range(0, PI * 2)
+		print("BLTRACE pp5 pos done")
 		tank_pawn.connect("shoot_bullet", _on_shoot_bullet)
 		ingame_node.get_node("TankPawns").add_child(tank_pawn, true)
 		alive_tanks_count += 1
+		print("BLTRACE place_pawns done alive=", alive_tanks_count, " sid=", sid)
 
 ## directly called by destroyed tanks
 func _on_tank_die() -> void:
+	print("BLTRACE tank_die alive_before=", alive_tanks_count)
 	alive_tanks_count -= 1
 	MasterManager.play_server_sound(ingame_node.get_node(^"Sounds/DeathNoise"))
 	if alive_tanks_count <= 1: ingame_node.get_node(^"Timers/DeathDelay").start()
@@ -355,7 +390,7 @@ func spawn_bullet(payload: Dictionary) -> Node:
 func teleport_tank(pos: Vector2) -> void:
 	var pid: int = multiplayer.get_remote_sender_id()
 	if not multiplayer.is_server(): return
-	if not SessionManager.is_admin(pid): return
+	if not SessionManager.is_op(pid): return
 	var pawn: Node2D = null
 	for controller: Node in controller_container.get_children():
 		if controller.sid != pid: continue
@@ -369,7 +404,7 @@ func teleport_tank(pos: Vector2) -> void:
 func change_invincibility() -> void:
 	var pid: int = multiplayer.get_remote_sender_id()
 	if not multiplayer.is_server(): return
-	if not SessionManager.is_admin(pid): return
+	if not SessionManager.is_op(pid): return
 	var pawn: Node2D = null
 	for controller: Node in controller_container.get_children():
 		if controller.sid != pid: continue
@@ -388,7 +423,7 @@ func change_invincibility() -> void:
 func change_noclip() -> void:
 	var pid: int = multiplayer.get_remote_sender_id()
 	if not multiplayer.is_server(): return
-	if not SessionManager.is_admin(pid): return
+	if not SessionManager.is_op(pid): return
 	var pawn: Node2D = null
 	for controller: Node in controller_container.get_children():
 		if controller.sid != pid: continue

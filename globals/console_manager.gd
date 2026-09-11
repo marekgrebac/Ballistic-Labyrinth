@@ -37,28 +37,10 @@ func _enter_tree() -> void:
 		true
 	)
 	register_command(
-		["connect", "join"],
-		"connects to a server: provide IP address and port at input fields in lobby",
-		StaffAccess.ANY,
-		true
-	)
-	register_command(
 		["disconnect", "leave"],
 		"leaves from the currently connected server",
 		StaffAccess.ANY,
 		true
-	)
-	register_command(
-		["start_server", "open_server"],
-		"configures this game instance as a server(host only)",
-		StaffAccess.ANY,
-		true
-	)
-	register_command(
-		["close_server", "end_server", "stop_server", "disconnect_server"],
-		"closes the server",
-		StaffAccess.OP,
-		false
 	)
 	register_command(
 		["get"],
@@ -75,13 +57,13 @@ func _enter_tree() -> void:
 	register_command(
 		["assign"],
 		"modify any attribute from any session except admin role",
-		StaffAccess.ADMIN,
+		StaffAccess.OP,
 		false
 	)
 	register_command(
 		["bot", "ai"],
 		"create or delete bots",
-		StaffAccess.ADMIN,
+		StaffAccess.OP,
 		false
 	)
 	register_command( # temporary quick configuration
@@ -93,31 +75,31 @@ func _enter_tree() -> void:
 	register_command(
 		["start_game", "play", "start"],
 		"starts the game",
-		StaffAccess.ADMIN,
+		StaffAccess.OP,
 		false
 	)
 	register_command(
 		["crate", "powerup", "weapon"],
 		"general command for manipulating crates ingame",
-		StaffAccess.ADMIN,
+		StaffAccess.OP,
 		false
 	)
 	register_command(
 		["maze", "maze_set", "maze_size", "maze_set_size", "set_maze_size"],
 		"sets the maze's minimum and maximum random width and height: \"min_w, max_w, min_h, max_h\"",
-		StaffAccess.ADMIN,
+		StaffAccess.OP,
 		false
 	)
 	register_command(
 		["close_ingame", "end_ingame", "close_game", "end_game"],
 		"ends the currently playing game and gets everyone back to lobby",
-		StaffAccess.ADMIN,
+		StaffAccess.OP,
 		false
 	)
 	register_command(
 		["restart_ingame", "restart_game", "restart"],
 		"restarts the currently playing game",
-		StaffAccess.ADMIN,
+		StaffAccess.OP,
 		false
 	)
 	register_command(
@@ -129,7 +111,7 @@ func _enter_tree() -> void:
 	register_command(
 		["pause", "p"],
 		"pause/resume the ingame",
-		StaffAccess.ADMIN,
+		StaffAccess.OP,
 		false
 	)
 	register_command(
@@ -142,6 +124,18 @@ func _enter_tree() -> void:
 		["op", "master"],
 		"grants or revokes op for any peer, but it's passworded and successful assigns change the password",
 		StaffAccess.ANY,
+		false
+	)
+	register_command(
+		["makehost", "host", "transfer_host"],
+		"transfers room host to another player: makehost {username}",
+		StaffAccess.OP,
+		false
+	)
+	register_command(
+		["purge", "clear_chat", "clearchat"],
+		"clears the chat window and history for everyone in the room",
+		StaffAccess.OP,
 		false
 	)
 	register_command(
@@ -471,41 +465,15 @@ func cmd_help(args: PackedStringArray, _flags: Array[PackedStringArray], _pid: i
 		return
 	print_output("command not found: " + args[0], "shell_error", 0)
 
-func cmd_connect(args: PackedStringArray, _flags: Array[PackedStringArray], _pid: int) -> void:
-	if NetworkManager.is_online:
-		print_output("already online/connected", "shell_error", 0)
-		return
-	if args.is_empty():
-		print_output("usage: connect {ws/wss url}", "shell_output", 0)
-		return
-	NetworkManager.url = args[0]
-	NetworkManager.start_client()
-
 func cmd_disconnect(args: PackedStringArray, flags: Array[PackedStringArray], _pid: int) -> void:
 	if not NetworkManager.is_online:
 		print_output("already offline/disconnected", "shell_error", 0)
 		return
 	if multiplayer.is_server():
-		print_output("can't disconnect with this command. Consider using close_server instead", "shell_error", 0)
+		print_output("can't disconnect with this command: only the room's server process may stop it", "shell_error", 0)
 		return
 	if not is_cmd_confirmed(cmd_disconnect, args, flags): return
 	NetworkManager.disconnect_from_server()
-
-func cmd_start_server(_args: PackedStringArray, _flags: Array[PackedStringArray], _pid: int) -> void:
-	if NetworkManager.is_online:
-		print_output("server is already started", "shell_error", 0)
-		return
-	if not NetworkManager.is_dedicated_server:
-		print_output("can only start service on a dedicated server", "shell_error", 0)
-		return
-	NetworkManager.start_server()
-
-func cmd_close_server(args: PackedStringArray, flags: Array[PackedStringArray], _pid: int) -> void:
-	if not NetworkManager.is_online:
-		print_output("already offline/disconnected", "shell_error", 0)
-		return
-	if not is_cmd_confirmed(cmd_close_server, args, flags, 1): return
-	NetworkManager.close_server()
 
 func cmd_get(args: PackedStringArray, flags: Array[PackedStringArray], _pid: int) -> void:
 	if args.is_empty():
@@ -732,7 +700,13 @@ func cmd_maze(args: PackedStringArray, _flags: Array[PackedStringArray], pid: in
 			"usage: maze \"min_width, max_width, min_height, max_height\"",
 			"shell_output", pid)
 		return
-	IngameManager.set_maze_size.rpc(args[0])
+	var compact: String = " ".join(args).replace(",", " ").strip_edges()
+	var parsed: Vector4i = SessionManager.string_to_vector4i(compact)
+	if parsed[0] <= 0 or parsed[1] <= 0 or parsed[2] <= 0 or parsed[3] <= 0:
+		print_output("usage: maze \"min_width, max_width, min_height, max_height\"", "shell_output", pid)
+		return
+	IngameManager.set_maze_size.rpc(compact)
+	print_output("maze size set to " + compact + " (applies from the next round)", "target", pid)
 
 func cmd_close_ingame(_args: PackedStringArray, _flags: Array[PackedStringArray], _pid: int) -> void:
 	if not NetworkManager.is_online:
@@ -843,6 +817,36 @@ func cmd_admin(args: PackedStringArray, _flags: Array[PackedStringArray], pid: i
 		print_output("you have been granted admin permissions", "target", target_pid)
 		return
 	print_output("you are no longer an admin", "target", target_pid)
+
+func cmd_makehost(args: PackedStringArray, _flags: Array[PackedStringArray], pid: int) -> void:
+	if args.is_empty():
+		print_output("usage: makehost {username}", "shell_output", pid)
+		return
+	var target_name: String = " ".join(args).strip_edges().to_lower()
+	var target_sid: int = 0
+	for sid: int in SessionManager.data.keys():
+		if sid <= 1: continue
+		if str(SessionManager.data[sid].get("name", "")).strip_edges().to_lower() == target_name:
+			target_sid = sid
+			break
+	if target_sid == 0:
+		print_output("player not found: " + " ".join(args), "shell_error", pid)
+		return
+	if target_sid == pid:
+		print_output("you are already the room host", "shell_error", pid)
+		return
+	SessionManager.set_local_op(target_sid, true)
+	SessionManager.set_local_op(pid, false)
+	SessionManager.set_local_admin(pid, false)
+	print_output("you are now the room host", "target", target_sid)
+	ChatManager.process_message(str(SessionManager.data[target_sid].get("name", "unnamed")) + " is now the room host", "global", 0)
+	UIManager.update_lobby_register()
+	SessionManager.update_registry.rpc(SessionManager.data)
+
+func cmd_purge(_args: PackedStringArray, _flags: Array[PackedStringArray], pid: int) -> void:
+	if not multiplayer.is_server(): return
+	ChatManager.purge_chat.rpc()
+	print_output("chat purged", "target", pid)
 
 func cmd_bot_max(args: PackedStringArray, _flags: Array[PackedStringArray], pid: int) -> void:
 	if args.size() < 1:
