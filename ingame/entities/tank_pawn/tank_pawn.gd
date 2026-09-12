@@ -51,6 +51,7 @@ func shoot() -> void:
 		MasterManager.play_server_sound($NoAmmoNoise)
 		return
 	for body: Node2D in $TunnelHitbox.get_overlapping_bodies():
+		if body == null or not is_instance_valid(body): continue
 		if body is StaticBody2D: return
 	shoot_bullet.emit(weapon_type, self)
 	$ShootCooldown.start()

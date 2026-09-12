@@ -34,6 +34,7 @@ func network_ready() -> void:
 
 signal equip_weapon(tank: RigidBody2D, type: String)
 func _on_body_entered(body: Node2D) -> void:
+	if body == null or not is_instance_valid(body): return
 	if body.get_meta("entity_type", "NULL") != "tank": return
 	if body.weapon_type != "regular": return
 	equip_weapon.emit(body, type)

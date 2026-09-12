@@ -103,6 +103,9 @@ func _on_lifespan_timer_timeout() -> void:
 
 func _on_body_entered(body: Node) -> void:
 	if not $Rest.visible: return
+	## engine queues body_entered signals; the other side of the contact
+	## may be freed before delivery -> get_meta on a dead object segfaults
+	if body == null or not is_instance_valid(body): return
 	if body.get_meta("entity_type", "NULL") == "wall":
 		if type == "laser": MasterManager.play_server_sound($BounceLaser)
 		elif type == "trap": MasterManager.play_server_sound($BounceTrap)

@@ -741,6 +741,9 @@ func equip_weapon(tank: RigidBody2D, type: String) -> void:
 
 func _on_death_delay_timeout() -> void:
 	if IngameManager.alive_tanks_count > 1: return
+	## mass-delete the round content NOW so frees/despawns settle during
+	## NextRoundDelay instead of 0.6s right before the next spawn burst
+	IngameManager.delete_ingame(false)
 	$Timers/NextRoundDelay.start()
 	if IngameManager.alive_tanks_count == 1:
 		var winner_controller: Node = null

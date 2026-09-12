@@ -118,6 +118,7 @@ func ai_tick_skipped() -> bool:
 
 func _physics_process(delta: float) -> void:
 	if not multiplayer.is_server(): return
+	if OS.get_environment("BL_DEBUG_BOTS_OFF") == "1": return
 	if pawn == null or not is_instance_valid(pawn): return
 	if pawn.get_node(^"Rest").visible == false: return
 	if IngameManager.ingame_container.get_child_count() == 0: return
@@ -296,7 +297,7 @@ func check_nearby_bullets() -> void:
 
 @export var BULLET_DANGER_SENSITIVITY: float = 0.4
 func is_bullet_dangerous(bullet: RigidBody2D) -> bool:
-	if bullet == null: return false
+	if bullet == null or not is_instance_valid(bullet): return false
 	if bullet.get_meta("entity_type", "NULL") != "bullet": return false
 	if (previous_position - global_position).length() == 0.0:
 		var is_raycast_hitting_bot: bool = bullet.get_node(^"Rest/VelocityRaycast1").get_collider() == self

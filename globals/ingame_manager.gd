@@ -241,13 +241,14 @@ func delete_ingame(is_deleting_controllers: bool) -> void:
 	print("BLTRACE delete_ingame controllers=", is_deleting_controllers)
 	if not multiplayer.is_server(): return
 	if ingame_container.get_child_count() == 0: return
-	for spawner: Node in ingame_container.get_child(0).get_children():
-		if not spawner is MultiplayerSpawner: continue
-		for instance: Node in spawner.get_children():
-			## deferred free: mid-frame free() of replicated nodes raced
-			## replication despawns and segfaulted room servers during
-			## death-cascade round restarts
-			instance.queue_free()
+	if OS.get_environment("BL_DEBUG_NO_INSTANCE_LOOP") != "1":
+		for spawner: Node in ingame_container.get_child(0).get_children():
+			if not spawner is MultiplayerSpawner: continue
+			for instance: Node in spawner.get_children():
+				## deferred free: mid-frame free() of replicated nodes raced
+				## replication despawns and segfaulted room servers during
+				## death-cascade round restarts
+				instance.queue_free()
 	if is_deleting_controllers: delete_controllers()
 	ingame_container.get_child(0).queue_free()
 
@@ -283,7 +284,8 @@ func finish_network_maze_generation() -> void:
 	if current_state <= State.ANIMATING: return
 	place_pawns()
 	ingame_node.toggle_pawns.rpc(true)
-	ingame_node.activate_crate_spawn_timer()
+	if OS.get_environment("BL_DEBUG_NO_CRATES") != "1":
+		ingame_node.activate_crate_spawn_timer()
 	set_current_state(State.FINISHED)
 
 #@rpc("any_peer", "reliable")
@@ -341,10 +343,20 @@ func place_pawns_staggered() -> void:
 		tank_pawn.rotation = ingame_node.SEEDED_RNG.randf_range(0, PI * 2)
 		print("BLTRACE pp5 pos done")
 		tank_pawn.connect("shoot_bullet", _on_shoot_bullet)
+		if OS.get_environment("BL_DEBUG_NO_PAWN_COLLISION") == "1":
+			tank_pawn.collision_layer = 0
+			tank_pawn.collision_mask = 0
+		if OS.get_environment("BL_DEBUG_NO_PAWN_SYNC") == "1":
+			var sync_node: Node = tank_pawn.get_node_or_null(^"Sync")
+			if sync_node != null: sync_node.queue_free()
 		ingame_node.get_node("TankPawns").add_child(tank_pawn, true)
 		alive_tanks_count += 1
 		print("BLTRACE place_pawns done alive=", alive_tanks_count, " sid=", sid)
 		## give replication/navigation a frame to settle between pawns
+		await get_tree().process_frame
+		await get_tree().process_frame
+		await get_tree().process_frame
+		await get_tree().process_frame
 		await get_tree().process_frame
 		await get_tree().process_frame
 
@@ -360,6 +372,8 @@ func _on_tank_die() -> void:
 		print("BLTRACE tank_die DeathDelay started")
 
 func _on_shoot_bullet(weapon_type: String, tank: RigidBody2D) -> void:
+	if OS.get_environment("BL_DEBUG_NO_BULLETS") == "1":
+		return
 	if tank == null: return
 	if weapon_type != "regular":
 		tank.equip_weapon.rpc("regular")
