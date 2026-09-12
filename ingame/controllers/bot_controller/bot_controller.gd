@@ -122,6 +122,8 @@ func _physics_process(delta: float) -> void:
 	if pawn == null or not is_instance_valid(pawn): return
 	if pawn.get_node(^"Rest").visible == false: return
 	if IngameManager.ingame_container.get_child_count() == 0: return
+	if Engine.get_physics_frames() % 240 == 0:
+		print("BLTRACE botpos sid=", sid, " pos=", pawn.global_position, " vel=", pawn.get("linear_velocity").length() if pawn.get("linear_velocity") != null else -1, " lin=", linear_input, " ang=", angular_input, " slp=", pawn.get("sleeping") if pawn.get("sleeping") != null else "?", " tgt=", target, " nav_finished=", $NavAgent.is_navigation_finished(), " patrol=", is_patrol_set, " aiming=", is_aiming)
 	global_position = pawn.global_position
 	rotation = pawn.rotation
 	if not ai_tick_skipped():

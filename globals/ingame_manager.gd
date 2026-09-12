@@ -350,6 +350,10 @@ func place_pawns_staggered() -> void:
 			var sync_node: Node = tank_pawn.get_node_or_null(^"Sync")
 			if sync_node != null: sync_node.queue_free()
 		ingame_node.get_node("TankPawns").add_child(tank_pawn, true)
+		## pawns spawn with PROCESS_MODE_DISABLED; the old sync place_pawns ran
+		## fully before toggle_pawns(true). Async staggered spawning must enable
+		## each pawn itself or it never integrates forces.
+		tank_pawn.toggle(true)
 		alive_tanks_count += 1
 		print("BLTRACE place_pawns done alive=", alive_tanks_count, " sid=", sid)
 		## give replication/navigation a frame to settle between pawns
